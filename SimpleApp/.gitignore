@@ -1,0 +1,17 @@
+bin
+obj
+.idea
+.vs
+PublishProfiles
+*.csproj.user
+*.nupkg
+*.user
+node_modules
+package-lock.json
+packages
+Debug
+Release
+*.aps
+*.pdb
+*.log
+/.vscode
