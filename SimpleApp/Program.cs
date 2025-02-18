@@ -13,14 +13,7 @@ namespace CreateProcesses
     {
         static async Task Main(string[] args)
         {
-            if (args.Length == 0)
-            {
-                Console.WriteLine("Usage: CreateProcesses <number-of-processes>");
-                return;
-            }
-
             var pid = Process.GetCurrentProcess().Id;
-            Console.WriteLine($"Process ID: {pid}");
 
             using (var m = new EventWaitHandle(false, EventResetMode.ManualReset, "Global\\SimpleApp0", out var created))
             {
@@ -28,12 +21,12 @@ namespace CreateProcesses
                 {
                     var sw = new Stopwatch();
                     sw.Start();
-                    var count = args.Length > 0 ? Convert.ToInt32(args[0]) : 10;
-                    var tasks = StartApps(count).ToList();
+                    var count = args.Length > 0 && int.TryParse(args[0], out var n) ? n : 5;
+                    var tasks = StartApps(count, args).ToList();
 
                     await Task.WhenAll(tasks).ConfigureAwait(false);
 
-                    MessageBox.Show($"Created {count} processes.\nTime taken: {sw.ElapsedMilliseconds} ms");
+                    MessageBox.Show($"Created {count} processes.\nTime taken: {sw.ElapsedMilliseconds} ms\n\nUsage: CreateProcesses [number-of-processes] [form]\nnumber-of-processes - number of processes to create\nform - create processes with form");
 
                     m.Set();
                 }
@@ -42,20 +35,33 @@ namespace CreateProcesses
                     using (var h = new EventWaitHandle(false, EventResetMode.ManualReset, $"Global\\SimpleApp{pid}", out var created1))
                     {
                         h.Set();
-                        //new Form().Show();
-                        m.WaitOne();
+
+                        if (args.Any(a => a.Equals("form", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            var form = new Form();
+                            new Thread(() =>
+                            {
+                                m.WaitOne();
+                                form.Close();
+                            }).Start();
+                            Application.Run(form);
+                        }
+                        else
+                        {
+                            m.WaitOne();
+                        }
                     }
                 }
             }
         }
 
-        private static IEnumerable<Task> StartApps(int count)
+        private static IEnumerable<Task> StartApps(int count, string[] args)
         {
             for (int i = 0; i < count; i++)
             {
                 yield return Task.Run(async () =>
                 {
-                    var p = Process.Start(Assembly.GetExecutingAssembly().Location);
+                    var p = Process.Start(Assembly.GetExecutingAssembly().Location, string.Join(" ", args));
                     using (var h = new EventWaitHandle(false, EventResetMode.ManualReset, $"Global\\SimpleApp{p.Id}", out var created))
                     {
                         var tcs = new TaskCompletionSource<int>();
